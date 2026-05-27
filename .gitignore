@@ -31,3 +31,6 @@ Thumbs.db
 # Test / coverage
 .pytest_cache/
 htmlcov/
+
+# oh-my-claudecode
+.omc/

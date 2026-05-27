@@ -25,6 +25,12 @@ dependencies = [
     "Pillow>=10.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+
 [project.scripts]
 zhipu-vision-mcp = "zhipu_vision_mcp.server:main"
 

@@ -1,78 +1,50 @@
 # zhipu-vision-mcp
 
-MCP Server for vision understanding, powered by [ZhipuAI](https://open.bigmodel.cn/) GLM-4.6V / GLM-5V-Turbo multimodal models.
+基于 [智谱AI](https://open.bigmodel.cn/) GLM-4.6V / GLM-5V-Turbo 多模态模型的视觉理解 MCP Server。
 
-Provides 8 vision tools for AI coding assistants (Claude Code, Cursor, Windsurf, etc.) to analyze images, videos, charts, UI screenshots, error screenshots, and technical diagrams.
+为 AI 编程助手（Claude Code、Cursor、Windsurf 等）提供 8 个视觉分析工具，支持图像、视频、图表、UI 截图、错误截图和技术图表的理解。
 
-## Features
+## 功能
 
-| Tool | Description |
-|------|-------------|
-| `analyze_image` | General-purpose image analysis (supports URL & local path) |
-| `analyze_video` | Video content analysis (MP4/MOV/M4V, max 8MB) |
-| `analyze_data_visualization` | Chart/dashboard analysis — extract trends, anomalies, metrics |
-| `diagnose_error_screenshot` | Error screenshot diagnosis — identify error type & fix suggestions |
-| `extract_text_from_screenshot` | OCR text extraction from screenshots |
-| `ui_to_artifact` | UI screenshot → code / design spec / AI prompt / description |
-| `ui_diff_check` | Compare design mockup vs implementation screenshot |
-| `understand_technical_diagram` | Parse architecture diagrams, flowcharts, UML, ER diagrams |
+| 工具 | 说明 |
+|------|------|
+| `analyze_image` | 通用图像分析（支持 URL 和本地路径） |
+| `analyze_video` | 视频内容分析（MP4/MOV/M4V，最大 8MB） |
+| `analyze_data_visualization` | 图表/仪表盘分析 — 提取趋势、异常、指标 |
+| `diagnose_error_screenshot` | 错误截图诊断 — 识别错误类型并给出修复建议 |
+| `extract_text_from_screenshot` | 截图 OCR 文字提取 |
+| `ui_to_artifact` | UI 截图 → 代码 / 设计规范 / AI 提示词 / 自然语言描述 |
+| `ui_diff_check` | 设计稿与实现截图对比 |
+| `understand_technical_diagram` | 解析架构图、流程图、UML、ER 图等技术图表 |
 
-## Prerequisites
+## 前置条件
 
 - Python 3.10+
-- [ZhipuAI API Key](https://open.bigmodel.cn/) (set as environment variable)
+- [智谱AI API Key](https://open.bigmodel.cn/)（设置为环境变量）
 
-## Installation
+## 安装与使用
 
-### Option 1: uvx (recommended)
-
-```bash
-uvx zhipu-vision-mcp
-```
-
-### Option 2: pip
-
-```bash
-pip install zhipu-vision-mcp
-zhipu-vision-mcp
-```
-
-### Option 3: Clone & run
+### 第 1 步：安装
 
 ```bash
 git clone https://github.com/JiaoBingJie/zhipu-vision-mcp.git
 cd zhipu-vision-mcp
 pip install -e .
-zhipu-vision-mcp
 ```
 
-## Configuration
+安装完成后，`zhipu-vision-mcp` 命令将注册到系统 PATH 中，可在任意目录运行。
 
-Set your ZhipuAI API key as an environment variable:
+### 第 2 步：获取 API Key
 
-```bash
-export ZHIPUAI_API_KEY="your-api-key-here"
-```
+前往 [智谱AI开放平台](https://open.bigmodel.cn/) 注册并获取 API Key。
 
-### Claude Code
+### 第 3 步：配置 AI 编程助手
 
-Add to your `.claude/settings.json` or global `~/.claude/settings.json`:
+在对应的配置文件中添加 MCP 服务器配置。配置中的 `env.ZHIPUAI_API_KEY` 会在启动 MCP Server 时注入为环境变量，无需手动 export。
 
-```json
-{
-  "mcpServers": {
-    "zhipu-vision": {
-      "command": "uvx",
-      "args": ["zhipu-vision-mcp"],
-      "env": {
-        "ZHIPUAI_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
-```
+#### Claude Code
 
-Or if installed via pip:
+添加到 `~/.claude/settings.json`（全局）或项目 `.claude/settings.json`：
 
 ```json
 {
@@ -87,16 +59,15 @@ Or if installed via pip:
 }
 ```
 
-### Cursor
+#### Cursor
 
-Add to your `.cursor/mcp.json`:
+添加到 `.cursor/mcp.json`：
 
 ```json
 {
   "mcpServers": {
     "zhipu-vision": {
-      "command": "uvx",
-      "args": ["zhipu-vision-mcp"],
+      "command": "zhipu-vision-mcp",
       "env": {
         "ZHIPUAI_API_KEY": "your-api-key-here"
       }
@@ -105,16 +76,15 @@ Add to your `.cursor/mcp.json`:
 }
 ```
 
-### Windsurf / VS Code (Continue)
+#### Windsurf / VS Code (Continue)
 
-Add to your `~/.continue/config.json` or project `.continue/config.json`:
+添加到 `~/.continue/config.json` 或项目 `.continue/config.json`：
 
 ```json
 {
   "mcpServers": {
     "zhipu-vision": {
-      "command": "uvx",
-      "args": ["zhipu-vision-mcp"],
+      "command": "zhipu-vision-mcp",
       "env": {
         "ZHIPUAI_API_KEY": "your-api-key-here"
       }
@@ -123,29 +93,35 @@ Add to your `~/.continue/config.json` or project `.continue/config.json`:
 }
 ```
 
-## Models
+## 模型
 
-| Tool | Default Model | Notes |
-|------|--------------|-------|
-| `analyze_image` | `glm-4.6v` | Configurable via `model` parameter |
-| `analyze_video` | `glm-4.6v` | Configurable via `model` parameter |
-| `analyze_data_visualization` | `glm-4.6v` | Fixed |
-| `diagnose_error_screenshot` | `glm-4.6v` | Fixed |
-| `extract_text_from_screenshot` | `glm-4.6v` | Fixed |
-| `ui_to_artifact` | `glm-5v-turbo` | Uses faster model for code generation |
-| `ui_diff_check` | `glm-4.6v` | Fixed |
-| `understand_technical_diagram` | `glm-4.6v` | Fixed |
+| 工具 | 默认模型 | 备注 |
+|------|----------|------|
+| `analyze_image` | `glm-4.6v` | 可通过 `model` 参数配置 |
+| `analyze_video` | `glm-4.6v` | 可通过 `model` 参数配置 |
+| `analyze_data_visualization` | `glm-4.6v` | 固定，关闭深度思考 |
+| `diagnose_error_screenshot` | `glm-4.6v` | 固定 |
+| `extract_text_from_screenshot` | `glm-4.6v` | 固定 |
+| `ui_to_artifact` | `glm-5v-turbo` | 使用更快的模型，关闭深度思考 |
+| `ui_diff_check` | `glm-4.6v` | 固定 |
+| `understand_technical_diagram` | `glm-4.6v` | 固定 |
 
-## Development
+## 开发
 
 ```bash
-# Install in dev mode
+# 开发模式安装（包含测试和 lint 工具）
 pip install -e ".[dev]"
 
-# Run server directly
+# 运行测试
+pytest
+
+# 代码检查
+ruff check src/
+
+# 直接运行 server
 python -m zhipu_vision_mcp.server
 ```
 
-## License
+## 许可证
 
 MIT

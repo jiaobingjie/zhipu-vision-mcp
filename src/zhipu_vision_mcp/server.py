@@ -8,6 +8,8 @@ import base64
 from zhipuai import ZhipuAI
 from mcp.server.fastmcp import FastMCP
 
+MAX_VIDEO_SIZE = 8 * 1024 * 1024  # 8MB
+
 mcp = FastMCP("zhipu-vision")
 
 MIME_MAP = {
@@ -24,12 +26,19 @@ MIME_MAP = {
 
 
 def get_client() -> ZhipuAI:
-    return ZhipuAI(api_key=os.environ["ZHIPUAI_API_KEY"])
+    key = os.environ.get("ZHIPUAI_API_KEY")
+    if not key:
+        raise ValueError("ZHIPUAI_API_KEY environment variable is not set. Please set it before using the server.")
+    return ZhipuAI(api_key=key)
 
 
 def encode_file(path: str) -> tuple[str, str]:
+    if not os.path.isfile(path):
+        raise ValueError(f"File not found: {path}")
     ext = os.path.splitext(path)[1].lower()
-    mime = MIME_MAP.get(ext, "image/jpeg")
+    if ext not in MIME_MAP:
+        raise ValueError(f"Unsupported file type: {ext}. Supported: {', '.join(sorted(MIME_MAP.keys()))}")
+    mime = MIME_MAP[ext]
     with open(path, "rb") as f:
         b64 = base64.b64encode(f.read()).decode("utf-8")
     return b64, mime
@@ -53,7 +62,12 @@ def call_vision(model: str, content_list: list, prompt: str, thinking: bool = Tr
     }
     if thinking:
         kwargs["thinking"] = {"type": "enabled"}
-    response = client.chat.completions.create(**kwargs)
+    else:
+        kwargs["thinking"] = {"type": "disabled"}
+    try:
+        response = client.chat.completions.create(**kwargs)
+    except Exception as e:
+        raise ValueError(f"ZhipuAI API error: {e}") from e
     msg = response.choices[0].message
     result = ""
     if hasattr(msg, "reasoning_content") and msg.reasoning_content:
@@ -90,6 +104,10 @@ def analyze_video(video_source: str, prompt: str, model: str = "glm-4.6v") -> st
         prompt: 分析要求
         model: 模型名称，默认 glm-4.6v
     """
+    if not video_source.startswith(("http://", "https://")):
+        size = os.path.getsize(video_source)
+        if size > MAX_VIDEO_SIZE:
+            raise ValueError(f"Video file exceeds 8MB limit ({size / 1024 / 1024:.1f}MB). Please compress or trim the video.")
     content = [build_image_content(video_source)]
     return call_vision(model, content, prompt)
 
@@ -122,7 +140,7 @@ def analyze_data_visualization(
         system += f"\n\n请特别关注：{analysis_focus}"
     full_prompt = system + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-4.6v", content, full_prompt)
+    return call_vision("glm-4.6v", content, full_prompt, thinking=False)
 
 
 # ─── Tool 4: diagnose_error_screenshot ───────────────────────────────
@@ -237,7 +255,7 @@ def ui_to_artifact(
     instruction = output_instructions.get(output_type, output_instructions["description"])
     full_prompt = instruction + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-5v-turbo", content, full_prompt)
+    return call_vision("glm-5v-turbo", content, full_prompt, thinking=False)
 
 
 # ─── Tool 7: ui_diff_check ──────────────────────────────────────────
