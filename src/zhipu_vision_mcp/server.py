@@ -1,6 +1,6 @@
 """
 智谱视觉理解 MCP Server
-对标 zai-mcp-server 的 8 个视觉工具，调用智谱 API（GLM-4.6V / GLM-5V-Turbo）
+对标 zai-mcp-server 的 8 个视觉工具，调用智谱 API（GLM-4.6V-Flash / GLM-4.1V-Thinking-Flash 等）
 """
 
 import os
@@ -9,6 +9,27 @@ from zhipuai import ZhipuAI
 from mcp.server.fastmcp import FastMCP
 
 MAX_VIDEO_SIZE = 8 * 1024 * 1024  # 8MB
+
+# 可通过环境变量配置各工具的默认模型
+DEFAULT_MODELS = {
+    "analyze_image": os.environ.get("ZHIPU_MODEL_ANALYZE_IMAGE", "glm-4.6v-flash"),
+    "analyze_video": os.environ.get("ZHIPU_MODEL_ANALYZE_VIDEO", "glm-4.6v-flash"),
+    "analyze_data_visualization": os.environ.get("ZHIPU_MODEL_DATA_VIZ", "glm-4.6v-flash"),
+    "diagnose_error_screenshot": os.environ.get("ZHIPU_MODEL_DIAGNOSE", "glm-4.6v-flash"),
+    "extract_text_from_screenshot": os.environ.get("ZHIPU_MODEL_OCR", "glm-4.6v-flash"),
+    "ui_to_artifact": os.environ.get("ZHIPU_MODEL_UI_ARTIFACT", "glm-4.1v-thinking-flash"),
+    "ui_diff_check": os.environ.get("ZHIPU_MODEL_UI_DIFF", "glm-4.6v-flash"),
+    "understand_technical_diagram": os.environ.get("ZHIPU_MODEL_DIAGRAM", "glm-4.6v-flash"),
+}
+
+# 各模型的最大输出 token
+MODEL_MAX_TOKENS = {
+    "glm-4.6v": 16384,
+    "glm-4.6v-flash": 32768,
+    "glm-4.1v-thinking-flash": 16384,
+    "glm-4v-flash": 1024,
+    "glm-5v-turbo": 65536,
+}
 
 mcp = FastMCP("zhipu-vision")
 
@@ -58,7 +79,7 @@ def call_vision(model: str, content_list: list, prompt: str, thinking: bool = Tr
         "model": model,
         "messages": messages,
         "stream": False,
-        "max_tokens": 65536 if model == "glm-5v-turbo" else 16384,
+        "max_tokens": MODEL_MAX_TOKENS.get(model, 16384),
     }
     if thinking:
         kwargs["thinking"] = {"type": "enabled"}
@@ -80,14 +101,15 @@ def call_vision(model: str, content_list: list, prompt: str, thinking: bool = Tr
 
 
 @mcp.tool()
-def analyze_image(image_source: str, prompt: str, model: str = "glm-4.6v") -> str:
+def analyze_image(image_source: str, prompt: str, model: str = "") -> str:
     """通用图像分析。支持本地路径或 URL。
 
     Args:
         image_source: 图片路径或 URL
         prompt: 分析要求
-        model: 模型名称，默认 glm-4.6v
+        model: 模型名称，默认 glm-4.6v-flash（可通过 ZHIPU_MODEL_ANALYZE_IMAGE 环境变量配置）
     """
+    model = model or DEFAULT_MODELS["analyze_image"]
     content = [build_image_content(image_source)]
     return call_vision(model, content, prompt)
 
@@ -96,14 +118,15 @@ def analyze_image(image_source: str, prompt: str, model: str = "glm-4.6v") -> st
 
 
 @mcp.tool()
-def analyze_video(video_source: str, prompt: str, model: str = "glm-4.6v") -> str:
+def analyze_video(video_source: str, prompt: str, model: str = "") -> str:
     """视频内容分析。支持本地视频路径或 URL。
 
     Args:
         video_source: 视频路径或 URL
         prompt: 分析要求
-        model: 模型名称，默认 glm-4.6v
+        model: 模型名称，默认 glm-4.6v-flash（可通过 ZHIPU_MODEL_ANALYZE_VIDEO 环境变量配置）
     """
+    model = model or DEFAULT_MODELS["analyze_video"]
     if not video_source.startswith(("http://", "https://")):
         size = os.path.getsize(video_source)
         if size > MAX_VIDEO_SIZE:
@@ -140,7 +163,7 @@ def analyze_data_visualization(
         system += f"\n\n请特别关注：{analysis_focus}"
     full_prompt = system + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-4.6v", content, full_prompt, thinking=False)
+    return call_vision(DEFAULT_MODELS["analyze_data_visualization"], content, full_prompt, thinking=False)
 
 
 # ─── Tool 4: diagnose_error_screenshot ───────────────────────────────
@@ -171,7 +194,7 @@ def diagnose_error_screenshot(
         system += f"\n\n错误发生场景：{context}"
     full_prompt = system + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-4.6v", content, full_prompt)
+    return call_vision(DEFAULT_MODELS["diagnose_error_screenshot"], content, full_prompt)
 
 
 # ─── Tool 5: extract_text_from_screenshot ─────────────────────────────
@@ -201,7 +224,7 @@ def extract_text_from_screenshot(
         system += f"\n\n截图中的编程语言：{programming_language}"
     full_prompt = system + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-4.6v", content, full_prompt)
+    return call_vision(DEFAULT_MODELS["extract_text_from_screenshot"], content, full_prompt)
 
 
 # ─── Tool 6: ui_to_artifact ──────────────────────────────────────────
@@ -255,7 +278,7 @@ def ui_to_artifact(
     instruction = output_instructions.get(output_type, output_instructions["description"])
     full_prompt = instruction + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-5v-turbo", content, full_prompt, thinking=False)
+    return call_vision(DEFAULT_MODELS["ui_to_artifact"], content, full_prompt, thinking=False)
 
 
 # ─── Tool 7: ui_diff_check ──────────────────────────────────────────
@@ -290,7 +313,7 @@ def ui_diff_check(
         build_image_content(expected_image_source),
         build_image_content(actual_image_source),
     ]
-    return call_vision("glm-4.6v", content, full_prompt)
+    return call_vision(DEFAULT_MODELS["ui_diff_check"], content, full_prompt)
 
 
 # ─── Tool 8: understand_technical_diagram ────────────────────────────
@@ -328,7 +351,7 @@ def understand_technical_diagram(
     )
     full_prompt = system + "\n\n用户补充要求：" + prompt
     content = [build_image_content(image_source)]
-    return call_vision("glm-4.6v", content, full_prompt)
+    return call_vision(DEFAULT_MODELS["understand_technical_diagram"], content, full_prompt)
 
 
 def main():
